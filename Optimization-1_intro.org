@@ -1,0 +1,1740 @@
+#+TITLE: Optimization
+
+* Introduction to optimization
+** The basic components
+*** yiddi: how to get the object function or cost function
+    The objective function or called cost function, can get by 2 ways:
+    1. define yourself: note that, the input and output can be sole value or ndarray.
+       1. input as ndarray represent the variables: [x1, x2, x3]
+       2. output as ndarray represent multiple functions(eg. opt.root(fun)
+          require multiple functions)
+    2. np.poly1d( and some other things like this.)
+
+    #+NAME: get obj_function by np.poly1d
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import numpy as np
+      objective = np.poly1d([1.3, 4.0, 0.6])
+      print(objective)
+      print(type(objective))
+    #+END_SRC
+
+    #+NAME: get obj_function by user-define
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      def system(x,a,b,c): #<- all variables form an array x, 'abc' are parameters
+          x0, x1, x2 = x
+          eqs= [           #<- all the functions form an array eqs
+              3 * x0 - np.cos(x1*x2) + a, # == 0
+              x0**2 - 81*(x1+0.1)**2 + np.sin(x2) + b, # == 0
+              np.exp(-x0*x1) + 20*x2 + c # == 0
+          ]
+          return eqs       #<- return this array
+    #+END_SRC
+*** The objective function (also called the 'cost' function)
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import numpy as np
+      objective = np.poly1d([1.3, 4.0, 0.6])
+      print(objective)
+      print(type(objective))
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[2]:
+    :END:
+
+    This ~np.poly1d()~ return an callable function. So you can call it by ~transfer
+    an parameter value~ to it, and ~get a value return~.
+
+    | parameter          | return  |
+    |--------------------+---------|
+    | objective(value)   | value   |
+    | objective(ndarray) | ndarray |
+
+*** The optimizer
+    [[*fmin][fmin]] using the ~downhill~ simplex algorithm
+
+    All the optimizer will have a *termination condition* inside, like 'when
+    gradient stop changing, optimizer finish'.
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+      x_ = opt.fmin(objective, [3])
+      print("solved: x={}".format(x_))
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[3]:
+    :END:
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      %matplotlib inline
+      import matplotlib.pyplot as plt
+      x = np.linspace(-4,1,101)
+      plt.plot(x, objective(x))
+      plt.plot(x_, objective(x_), 'ro') # <- you can see a red ball act like it ~downhill to the bottom~
+      plt.show()
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[4]:
+    [[file:./obipy-resources/2199VKS.png]]
+    :END:
+
+**** waht is a fitting
+     In regression problem, you need to draw a line or curve through data points to
+     make the distance between the line/curve and points as small as possible.This is
+     a minimization problem.
+
+     In classifications problem, you need to draw a line to make the distance as far
+     as possible to each label of the points. This is a maximization problem,
+     maximization problem can solve by the minimization just through reverse the ~+~
+     to ~-~ or ~x~ to ~1/x~.
+
+     The *fitting* problem is to draw a line or curve, but it constrained by the
+     data points you have to satisfy some minimization/maximizaion on distance.
+** Additional components
+*** "Box" constraints
+    impose physical information on the optimization problem is called the 'box'
+    constraints.
+
+    --- "hey, you have some inputs, but the inputs is only avaiable in this region"
+
+    "region" is the "box", the "box" fix the search space, the "box" is the
+    space of the possible solutions the optimizer can explore.
+
+    most optimization algorithm are not constrained and most of them CAN NOT
+    handle things like box constraints.
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.special as ss
+      import scipy.optimize as opt
+      import numpy as np
+      import matplotlib.pyplot as plt
+
+      x = np.linspace(2, 7, 200)
+
+      # 1st order Bessel
+      j1x = ss.j1(x)
+      plt.plot(x, j1x)
+
+      # use scipy.optimize's more modern "results object" interface
+      result = opt.minimize_scalar(ss.j1, method="bounded", bounds=[2, 4])
+
+      j1_min = ss.j1(result.x)
+      plt.plot(result.x, j1_min,'ro')
+      plt.axvline(x=2, ls='--', color='r')
+      plt.axvline(x=4, ls='--', color='r')
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[5]:
+    : <matplotlib.lines.Line2D at 0x7f3cb7727ef0>
+    [[file:./obipy-resources/2199iUY.png]]
+    :END:
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # eg from official site
+      import scipy.special as ss
+      import scipy.optimize as opt
+      import numpy as np
+      import matplotlib.pyplot as plt
+      fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+
+      x = np.linspace(-10, 7, 1000)
+      def f(x):
+          return (x-2)*x*(x+2)**2
+
+      # get minimize without bound constraints
+      res = opt.minimize_scalar(f)
+      print (res.x)
+      axes[0].plot(x, f(x))
+      axes[0].plot(res.x, f(res.x), 'ro')
+
+      # get minimize with bound constraints
+      res2 = opt.minimize_scalar(f, method='bounded', bounds=(-3, -1))
+      print (res2.x)
+      axes[1].plot(x, f(x))
+      axes[1].plot(res2.x, f(res2.x), 'ro')
+      axes[1].axvline(x=-3, linestyle='--', color='r')
+      axes[1].axvline(x=-1, linestyle='--', color='r')
+      plt.show()
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[6]:
+    [[file:./obipy-resources/2199vee.png]]
+    :END:
+
+*** The gradient and/or hessian
+    ~mystic~ package has bunch of nonlinear test functions inside, like
+    N-dimensional Rosenbrock function.
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import mystic.models as models
+      print(models.rosen.__doc__)
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[26]:
+    :END:
+
+Here is what the __doc__ print out:
+
+    evaluates an N-dimensional Rosenbrock saddle for a list of coeffs
+
+    $f(x) = \sum_{i=0}^{N-2} 100*(x_{i+1} - x_i^2)^2 + (1 - x_i)^2$
+
+    Inspect with mystic_model_plotter using::
+    mystic.models.rosen -b "-3:3:.1, -1:5:.1, 1" -d -x 1
+
+    The minimum is f(x)=0.0 at x_i=1.0 for all i
+
+And we can use the tips above
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import mystic.models as models
+      print(models.rosen.__doc__)
+      import mystic
+      mystic.model_plotter(mystic.models.rosen, kwds='-f -d -x 1 -b "-3:3:.1, -1:5:.1, 1"')
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[29]:
+    [[file:./obipy-resources/3915pjk.png]]
+    :END:
+
+    You can use it as a tool in any of the problems that we're looking at. It
+    always helps to get a good picture of what to solve, what's the surface you're
+    going to be looking at.
+
+    How to get the number of evaluations of this function, when using different
+    initial guess.
+
+    You also can supply the derivative function, NOT ALL optimizer support the
+    derivative function. But if it does, this will speed up the evaluations.
+
+    When you get the answer by randomly choose different x0, you should try them
+    to find the minor one. This may take huge time, but this is what you should
+    do.
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+      import numpy as np
+
+      # 1. <<< initial guess
+      x0 = [1.3, 1.6, -0.5, -1.8, 0.8]
+
+      # the standard answer should be [1,1,1,1,1], pretend we don't know
+      # 2. <<< we run opt.minimize to get the computed minimize point x
+      result = opt.minimize(opt.rosen, x0)
+      print(result.x) #<- but return this.
+      print(result.message) #<- say can not satisfy the error tolerance
+      print(result.success) #<- fail
+      print(result.nfev) #<- number of function evaluations
+
+      # 3. <<< we run opt.minimize and give a determinant function
+      #        but we get almost the same answer, should we stop and congrats.
+      result = opt.minimize(opt.rosen, x0, jac=opt.rosen_der)
+      print(result.x)
+      print(result.nfev, result.njev)
+      print('')
+
+      # 4. <<< of course, we should take different x0, and run many times to see
+      #        try them all to find the minor one as your confident "minize" value
+      for i in range(5):
+          x0 = np.random.randint(-20,20,5)
+          result = opt.minimize(opt.rosen, x0, jac=opt.rosen_der)
+          print("{} @ {} evals".format(result.x, result.nfev))
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[35]:
+    :END:
+
+    [-0.9620502   0.9357378   0.88071063  0.77787245  0.60508554]
+    385
+    [-0.96205103  0.9357394   0.88071361  0.77787768  0.60509369]
+    54 54
+
+    [ 0.99999996  0.99999991  0.99999983  0.99999967  0.99999934] @ 100 evals
+    [ 1.          1.          1.          1.00000001  1.00000001] @ 145 evals
+    [ 1.          1.          1.          1.00000001  1.00000002] @ 61 evals
+    [ 1.00000001  1.00000003  1.00000007  1.00000013  1.00000026] @ 122 evals
+    [ 1.00000001  1.00000002  1.00000003  1.00000007  1.00000014] @ 120 evals
+
+*** The penalty functions
+    Penalty functions do like a barrier.
+
+    ψ(x)=f(x)+k∗p(x)
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # http://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html#tutorial-sqlsp
+      '''
+        Maximize: f(x) = 2*x0*x1 + 2*x0 - x0**2 - 2*x1**2
+
+        Subject to:    x0**3 - x1 == 0
+                               x1 >= 1
+      '''
+      import numpy as np
+
+      def objective(x, sign=1.0): # <- a quadratic function, should use QP
+          return sign*(2*x[0]*x[1] + 2*x[0] - x[0]**2 - 2*x[1]**2)
+
+      def derivative(x, sign=1.0):
+          dfdx0 = sign*(-2*x[0] + 2*x[1] + 2)
+          dfdx1 = sign*(2*x[0] - 4*x[1])
+          return np.array([ dfdx0, dfdx1 ])
+
+      # unconstrained
+      result1 = opt.minimize(objective,    # <- obj_function
+                            [-1.0,1.0],   # <- initial guess
+                            args=(-1.0,), # <- the args passed to obj_function
+                            jac=derivative, # <- derivative function of obj_function
+                            method='SLSQP', # <- linear & quadratic programming
+                            options={'disp': True}) # <- print out the message
+
+      print("unconstrained: {}".format(result1.x))
+
+
+      cons = ({'type': 'eq', # <- constraints_func type
+               'fun' : lambda x: np.array([x[0]**3 - x[1]]),
+               'jac' : lambda x: np.array([3.0*(x[0]**2.0), -1.0])},
+              {'type': 'ineq',
+               'fun' : lambda x: np.array([x[1] - 1]),
+               'jac' : lambda x: np.array([0.0, 1.0])})
+
+      # constrained
+      result2 = opt.minimize(objective,
+                            [-1.0,1.0],
+                            args=(-1.0,),
+                            jac=derivative,
+                            constraints=cons, #<- constraints dict
+                            method='SLSQP',
+                            options={'disp': True})
+
+      print("constrained: {}".format(result2.x))
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[7]:
+    :END:
+*** steps of using ~scipy.optimize.minimize()~
+      1. initial guess
+      2. define obj func
+      3. define dev func
+      4. define constraints func
+      5. form all cons function to a tuple of dicts
+      6. apply optimizer:minimize()
+         - on obj(with or without args), dev, constraints, better to add options dict to print out the message.
+
+** Optimizer classifications :EXERCISE:
+*** Constrained versus unconstrained (and importantly LP and QP) :EXERCISE:
+   Optimizer algorithms can be divided into 2 groups:
+   1. constraints
+      - LP
+      - QP
+   2. non constraints
+      - differential evolution( not introduce here)
+      - genetic algorithms( not introduce here)
+
+Solve fast vs solve well. One kind of applications require a ~fast reaction~,
+like stock prediction, it don't require a good precision of prediction, but
+require a fast return. The other kind of applications require a ~well reacion~,
+like risk analytics.
+
+**** various of minimization: constrained and unconstrained
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # from scipy.optimize.minimize documentation
+      '''
+         ,**Unconstrained minimization**
+
+          Method *Nelder-Mead* uses the Simplex algorithm [1]_, [2]_. This
+          algorithm has been successful in many applications but other algorithms
+          using the first and/or second derivatives information might be preferred
+          for their better performances and robustness in general.
+
+          Method *Powell* is a modification of Powell's method [3]_, [4]_ which
+          is a *conjugate direction* method. It performs sequential one-dimensional
+          minimizations along each vector of the directions set (`direc` field in
+          `options` and `info`), which is updated at each iteration of the main
+          minimization loop. The function need not be differentiable, and no
+          derivatives are taken.
+
+          Method *CG* uses a nonlinear *conjugate gradient* algorithm by Polak and
+          Ribiere, a variant of the Fletcher-Reeves method described in [5]_ pp.
+          120-122. Only the first derivatives are used.
+
+          Method *BFGS* uses the quasi-Newton method of Broyden, Fletcher,
+          Goldfarb, and Shanno (BFGS) [5]_ pp. 136. It uses the first derivatives
+          only. BFGS has proven good performance even for non-smooth
+          optimizations. This method also returns an approximation of the Hessian
+          inverse, stored as `hess_inv` in the OptimizeResult object.
+
+          Method *Newton-CG* uses a Newton-CG algorithm [5]_ pp. 168 (also known
+          as the truncated Newton method). It uses a CG method to the compute the
+          search direction. See also *TNC* method for a box-constrained
+          minimization with a similar algorithm.
+
+          Method *Anneal* uses simulated annealing, which is a probabilistic
+          metaheuristic algorithm for global optimization. It uses no derivative
+          information from the function being optimized.
+
+          Method *dogleg* uses the dog-leg trust-region algorithm [5]_
+          for unconstrained minimization. This algorithm requires the gradient
+          and Hessian; furthermore the Hessian is required to be positive definite.
+
+          Method *trust-ncg* uses the Newton conjugate gradient trust-region
+          algorithm [5]_ for unconstrained minimization. This algorithm requires
+          the gradient and either the Hessian or a function that computes the
+          product of the Hessian with a given vector.
+
+          ,**Constrained minimization**
+
+          Method *L-BFGS-B* uses the L-BFGS-B algorithm [6]_, [7]_ for bound
+          constrained minimization.
+
+          Method *TNC* uses a truncated Newton algorithm [5]_, [8]_ to minimize a
+          function with variables subject to bounds. This algorithm uses
+          gradient information; it is also called Newton Conjugate-Gradient. It
+          differs from the *Newton-CG* method described above as it wraps a C
+          implementation and allows each variable to be given upper and lower
+          bounds.
+
+          Method *COBYLA* uses the Constrained Optimization BY Linear
+          Approximation (COBYLA) method [9]_, [10]_, [11]_. The algorithm is
+          based on linear approximations to the objective function and each
+          constraint. The method wraps a FORTRAN implementation of the algorithm.
+
+          Method *SLSQP* uses Sequential Least SQuares Programming to minimize a
+          function of several variables with any combination of bounds, equality
+          and inequality constraints. The method wraps the SLSQP Optimization
+          subroutine originally implemented by Dieter Kraft [12]_. Note that the
+          wrapper handles infinite values in bounds by converting them into large
+          floating values.
+      '''
+    #+END_SRC
+
+**** summary all optimization
+    The typical optimization algorithm (local or global) is unconstrained.
+    Constrained algorithms tend strongly to be *local*, and also often use LP/QP
+    approximations. Hence, most optimization algorithms are good either for
+    quick linear/quadratic approximation under some constraints, or are intended
+    for nonlinear functions without constraints. Any information about the
+    problem that impacts the potential solution can be seen as constraining
+    information. Constraining information is typically applied as a *penatly*,
+    or as a box constraint on an input. The user is thus typically forced to
+    pick whether they want to apply constraints but treat the problem as a LP/QP
+    approximation, or to ignore the constraining information in exchange for a
+    nonliear solver.
+
+**** linear programming and quadratic programming
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+
+      # constrained: linear (i.e. A*x + b)
+      print(opt.cobyla.fmin_cobyla)
+      print(opt.linprog)
+
+      # constrained: quadratic programming  (i.e. up to x**2)
+      print(opt.fmin_slsqp)
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[8]:
+    :END:
+
+    <function fmin_cobyla at 0x10dba79d8>
+    <function linprog at 0x10dd1d730>
+    <function fmin_slsqp at 0x10dba7bf8>
+
+**** why ~cvxopt~ is better than ~scipy.optimize~  :EXERCISE:
+
+    sicpy is a little verbose sometimes, ~cvxopt~ package provide a easy way to
+    represent constraints function and cost function(obj_function) of an
+    optimization problem as a *matrices view*.
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # http://cvxopt.org/examples/tutorial/lp.html
+      '''
+      .                                cost
+      .                                ---------------
+      minimize:  f = 2*x0 + x1      <- x0_coef x1_coef
+      .                                      2       1
+
+      .                                     A_row1     A_row2       b
+      subject to:                   <- x0_coef ^ x1_coef ^ < scalar ^
+      .          -x0 + x1 <= 1              -1 |       0 |        1 |
+      .           x0 + x1 >= 2              -1 |      -1 |        2 |
+      .           x1 >= 0                    0 |      -1 |        0 |
+      .           x0 - 2*x1 <= 4             1 |      -2 |        4 |
+      '''
+
+      import cvxopt as cvx
+      from cvxopt import solvers as cvx_solvers
+
+      A = cvx.matrix([ [-1.0, -1.0, 0.0, 1.0], [1.0, -1.0, -1.0, -2.0] ])
+      b = cvx.matrix([ 1.0, -2.0, 0.0, 4.0 ])
+      cost = cvx.matrix([ 2.0, 1.0 ])
+      sol = cvx_solvers.lp(cost, A, b) #<- linear programming
+
+      print(sol['x'])
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[9]:
+    :END:
+
+    pcost       dcost       gap    pres   dres   k/t
+    0:  2.6471e+00 -7.0588e-01  2e+01  8e-01  2e+00  1e+00
+    1:  3.0726e+00  2.8437e+00  1e+00  1e-01  2e-01  3e-01
+    2:  2.4891e+00  2.4808e+00  1e-01  1e-02  2e-02  5e-02
+    3:  2.4999e+00  2.4998e+00  1e-03  1e-04  2e-04  5e-04
+    4:  2.5000e+00  2.5000e+00  1e-05  1e-06  2e-06  5e-06
+    5:  2.5000e+00  2.5000e+00  1e-07  1e-08  2e-08  5e-08
+    Optimal solution found.
+    [ 5.00e-01]
+    [ 1.50e+00]
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # http://cvxopt.org/examples/tutorial/qp.html
+      '''
+      minimize:  f = 2*x1**2 + x2**2 + x1*x2 + x1 + x2
+
+      subject to:
+                  x1 >= 0
+                  x2 >= 0
+                  x1 + x2 == 1
+      '''
+
+      import cvxopt as cvx
+      from cvxopt import solvers as cvx_solvers
+
+      Q = 2*cvx.matrix([ [2, .5], [.5, 1] ])
+      p = cvx.matrix([1.0, 1.0])
+      G = cvx.matrix([[-1.0,0.0],[0.0,-1.0]])
+      h = cvx.matrix([0.0,0.0])
+      A = cvx.matrix([1.0, 1.0], (1,2))
+      b = cvx.matrix(1.0)
+      sol = cvx_solvers.qp(Q, p, G, h, A, b) # <- quadratic programming
+
+      print(sol['x'])
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    4 - c2383476-eb0f-4533-a946-c86870fc4dba
+    :END:
+
+
+    pcost       dcost       gap    pres   dres
+    0:  1.8889e+00  7.7778e-01  1e+00  3e-16  2e+00
+    1:  1.8769e+00  1.8320e+00  4e-02  2e-16  6e-02
+    2:  1.8750e+00  1.8739e+00  1e-03  2e-16  5e-04
+    3:  1.8750e+00  1.8750e+00  1e-05  1e-16  5e-06
+    4:  1.8750e+00  1.8750e+00  1e-07  1e-16  5e-08
+    Optimal solution found.
+    [ 2.50e-01]
+    [ 7.50e-01]
+
+    Notice how much nicer it is to see the optimizer "trajectory". Now, instead
+    of a single number, we have the path the optimizer took in finding the
+    solution. ~scipy.optimize~ has a version of this, with
+    ~options={'retall':True}~, which returns the solver trajectory.
+
+    EXERCISE: Solve the constrained programming problem by any of the means above.
+
+    .                            cost
+    .                            x0_coef  x1_coef
+    .                            ------   -----
+    Minimize: f = -1x[0] + 4x[1]  -1      4
+
+    .                     A.col1  A.col2   <   b
+    Subject to:
+    -3x[0] + 1x[1] <= 6     -3      1          6
+    1x[0] + 2x[1] <= 4       1      2          4
+    x[1] >= -3               0     -1          3
+
+    where: -inf <= x[0] <= inf
+
+    #+NAME: method-1 using cvxopt
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      ####################################################
+      # .                            cost                #
+      # .                            x0_coef  x1_coef    #
+      # .                            ------   -----      #
+      # Minimize: f = -1x[0] + 4x[1]  -1      4          #
+      #                                                  #
+      #     .                     A.col1  A.col2   <   b #
+      #     Subject to:                                  #
+      #     -3x[0] + 1x[1] <= 6     -3      1          6 #
+      #     1x[0] + 2x[1] <= 4       1      2          4 #
+      #     x[1] >= -3               0     -1          3 #
+      ####################################################
+
+      import cvxopt as cvx
+      from cvxopt import solvers as cvx_solvers
+
+      print ("starting")
+      A = cvx.matrix([[-3.0, 1.0, 0.0],[1.0, 2.0, -1.0]])
+      b = cvx.matrix([6.0,4.0,3.0])
+      cost = cvx.matrix([-1.0, 4.0])
+
+      sol = cvx_solvers.lp(cost, A, b)
+
+      print (sol)
+      print (sol['x'])
+    #+END_SRC
+
+    #+RESULTS: method-1 using cvxopt
+    :RESULTS:
+    # Out[17]:
+    :END:
+
+    [ 1.00e+01]
+    [-3.00e+00]
+
+
+    #+NAME: method-2 using scipy.optimize
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      ############################################################
+      # Minimize: f = -1x[0] + 4x[1] ===> obj                    #
+      #                                                          #
+      # Subject to:                  ===> constraints:           #
+      # -3x[0] + 1x[1] <= 6          ===> 3*x[0] - x[1] + 6 >= 0 #
+      # 1x[0] + 2x[1] <= 4           ===> -x[0] - 2*x[1] +4 >= 0 #
+      # x[1] >= -3                   ===> x[1] + 3               #
+      ############################################################
+
+      import scipy.optimize as opt
+      import numpy as np
+
+      # 1. initial guess
+      # 2. define obj func
+      # 3. define dev func of obj func
+      # 4. define constraints tuple of dicts
+      # 5. apply optimizer:minimize() on obj(with or without args), dev, constraints, better add options dict to print out the message.
+
+      def obj(x):
+          return -1*x[0] + 4*x[1]
+      def dev(x):
+          dfdx0 = -1
+          dfdx1 = 4
+          return np.array([dfdx0, dfdx1])
+      cons = ({'type':'ineq',
+               'fun': lambda x: 3*x[0]-x[1]+6
+               },
+              {'type':'ineq',
+               'fun': lambda x: -x[0]-2*x[1]+4
+              },
+              {'type': 'ineq',
+               'fun': lambda x: x[1] + 3
+              })
+      result = opt.minimize(obj,
+                            [-1.0, 1.0],
+                            jac=dev,
+                            constraints = cons,
+                            method='SLSQP',
+                            options={'disp': True})
+
+      print ("lp result: {}".format(result.x))
+      print (result.success)
+      print (result.message)
+    #+END_SRC
+
+    #+RESULTS: method-2 using scipy.optimize
+    :RESULTS:
+    # Out[18]:
+    :END:
+
+*** Local versus global
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+
+      # probabilstic solvers, that use random hopping/mutations
+      print(opt.differential_evolution)
+      print(opt.basinhopping)
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[19]:
+    :END:
+
+    <function differential_evolution at 0x10dd1dea0>
+    <function basinhopping at 0x10dd10510>
+
+    Comparing with the next two functions work for Rosen function optimization
+    using
+     - local optimization algorithm ---> initial guess
+     - global optimization algorithm ---> bounds
+
+    #+NAME: rosen functin minimize using local optimization
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+      import numpy as np
+
+      # 1. <<< initial guess (5 dimension)
+      x0 = [1.3, 1.6, -0.5, -1.8, 0.8]
+
+      # 2. <<< we run opt.minimize to get the computed minimize point x
+      # the standard answer should be [1,1,1,1,1], pretend we don't know
+      result = opt.minimize(opt.rosen, x0)
+      print(result.x) #<- but return this.
+      print(result.message) #<- say can not satisfy the error tolerance
+      print(result.success) #<- fail
+      print(result.nfev) #<- number of function evaluations
+
+      # 3. <<< we run opt.minimize and give a determinant function
+      #        but we get almost the same answer, should we stop and congrats.
+      result = opt.minimize(opt.rosen, x0, jac=opt.rosen_der)
+      print(result.x)
+      print(result.nfev, result.njev)
+      print('')
+
+      # 4. <<< of course, we should take different x0, and run many times to see
+      #        try them all to find the minor one as your confident "minize" value
+      for i in range(5):
+          x0 = np.random.randint(-20,20,5)
+          result = opt.minimize(opt.rosen, x0, jac=opt.rosen_der)
+          print("{} @ {} evals".format(result.x, result.nfev))
+    #+END_SRC
+
+    #+RESULTS: rosen functin minimize using local optimization
+    :RESULTS:
+    # Out[23]:
+    :END:
+
+[-0.9620501   0.93573761  0.88071026  0.77787182  0.60508459]
+Optimization terminated successfully.
+True
+378
+[-0.96205103  0.9357394   0.88071361  0.77787768  0.60509369]
+54 54
+
+[ 1.          1.          1.          1.          1.00000001] @ 171 evals
+[ 1.  1.  1.  1.  1.] @ 135 evals
+[ 1.          1.          1.          1.          0.99999999] @ 87 evals
+[ 0.99999999  1.          0.99999999  0.99999997  0.99999994] @ 114 evals
+[-0.96205102  0.93573939  0.88071359  0.77787764  0.60509363] @ 120 evals
+
+    #+NAME: rosen functin minimize using global optimization
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+
+      # bounds instead of an initial guess (5 dimension)
+      bounds = [(-10., 10)]*5
+
+      for i in range(10):
+          result = opt.differential_evolution(opt.rosen, bounds)
+          # result and number of function evaluations
+          print(result.x, '@ {} evals'.format(result.nfev))
+    #+END_SRC
+
+    #+RESULTS: rosen functin minimize using global optimization
+    :RESULTS:
+    # Out[22]:
+    :END:
+
+    [ 1.  1.  1.  1.  1.] @ 45006 evals
+    [-0.96205104  0.93573948  0.88071398  0.77787799  0.60509392] @ 5595 evals
+    [ 1.  1.  1.  1.  1.] @ 41406 evals
+    [ 1.  1.  1.  1.  1.] @ 42906 evals
+    [ 1.  1.  1.  1.  1.] @ 43806 evals
+    [ 1.  1.  1.  1.  1.] @ 44931 evals
+    [ 1.  1.  1.  1.  1.] @ 42906 evals
+    [ 1.  1.  1.  1.  1.] @ 44931 evals
+    [ 1.  1.  1.  1.  1.] @ 43206 evals
+    [ 1.  1.  1.  1.  1.] @ 42081 evals
+
+    Global optimizers tend to be *much slower* than local optimizers, and often
+    use *randomness* to pick points within some *box constraints* ~instead of~
+    starting with an *initial guess*.
+
+    Global optimization always speed up by *parallel* computing tech.
+
+    The choice then is between algorithms that are non-deterministic and
+    algorithms that are deterministic but depend very strongly on the selected
+    starting point.
+
+    *Local* optimization algorithms have names like *"gradient descent"* and
+    "*steepest descent*", while *global* optimizations tend to use things like
+    "*stocastic*" and "*genetic*" algorithms.
+
+*** Not covered: other exotic types
+**** Least-squares fitting
+
+      what is curve fitting
+      1. you give an assuming *coefficients-unspecified* *function model*: like ~ax+b=y~
+      2. give an *initial guess* of these coefficients
+      3. compute the *best coefficients*
+         1. using some optimization method like least square to minimize the sum
+            distance between *all data points* and the *initial curve*
+
+     #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+       import scipy.optimize as opt
+       import scipy.stats as stats
+       import matplotlib.pyplot as plt
+       import numpy as np
+
+       # 1 <- Define the function to fit.
+       def function(x, a, b, f, phi):
+           result = a * np.exp(-b * np.sin(f * x + phi))
+           return result
+
+       # 2 <- Create a noisy data set around the actual parameters
+       true_params = [3, 2, 1, np.pi/4]
+       print("target parameters: {}".format(true_params))
+       x = np.linspace(0, 2*np.pi, 25)
+       exact = function(x, *true_params)
+       noisy = exact + 0.3*stats.norm.rvs(size=len(x))
+
+       # 3 <- Use curve_fit to estimate the function parameters from the noisy data.
+       initial_guess = [1,1,1,1]
+       estimated_params, err_est = opt.curve_fit(function, x, noisy, p0=initial_guess) #<- note the special return format
+       print ( type(estimated_params) )
+       print ( type(err_est) )
+       print("solved parameters: {}".format(estimated_params))
+
+       # 4 <- err_est is an estimate of the covariance matrix of the estimates
+       print (err_est)
+       print("covarance: {}".format(err_est.diagonal()))
+
+       plt.plot(x, noisy, 'ro')
+       plt.plot(x, function(x, *estimated_params))
+     #+END_SRC
+
+     #+RESULTS:
+     :RESULTS:
+     # Out[28]:
+     : [<matplotlib.lines.Line2D at 0x7f3cb41bacc0>]
+     [[file:./obipy-resources/2199ctT.png]]
+     :END:
+
+     *Least-squares tends to be chosen when the user wants a measure of the covariance, typically as an error estimate*.
+
+**** Integer programming
+     Integer programming (IP) or Mixed-integer programming (MIP) requires special
+     optimizers that only select parameter values from the set of integers. These
+     optimizers are typically used for things like cryptography, or other
+     optimizations over a discrete set of possible solutions.
+
+** Typical uses
+*** Function minimization
+*** Data fitting:
+    Note that, data fitting methods *return an array* inside which are the
+    coefficients of the unspecified function model
+
+    - *coefficients of unspecified function* = ~opt~.curve_fit(assumfun, x, y, iniguess)
+    - *coefficients of unspecified function* = ~np~.polyfit(x, y, order_num)
+      - order_num is the 次方 of polynormial function model you want to use to
+        fit data points
+**** data fitting + np.poly1d()
+     It's a good idea to combine data fitting methods and methods like np.poly1d()
+     This methods combination always use to check points fitting result good or not.
+
+     linear_coef = np.polyfit(x, noisy_y, 1) #<- get the coefs as an array
+     linear_poly = np.poly1d(linear_coef)    #<- build an function obj by coefs array
+     linear_y = linear_poly(x)
+
+*** Root finding: opt.root(eqs, iniguess, args)
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import numpy as np
+      import scipy.optimize as opt
+
+      def system(x,a,b,c):
+          x0, x1, x2 = x
+          eqs= [
+              3 * x0 - np.cos(x1*x2) + a, # == 0
+              x0**2 - 81*(x1+0.1)**2 + np.sin(x2) + b, # == 0
+              np.exp(-x0*x1) + 20*x2 + c # == 0
+          ]
+          return eqs
+
+
+      # coefficients
+      a = -0.5
+      b = 1.06
+      c = (10 * np.pi - 3.0) / 3
+
+      # initial guess
+      x0 = [0.1, 0.1, -0.1] #<- this is initial_guess, not variables x0
+
+      # Solve the system of non-linear equations.
+      result = opt.root(system, x0, args=(a, b, c))
+      print("root:", result.x)       #<- len(result.x) == to number of var of equations
+      print("solution:", result.fun) #<- this will return all value of equations compute on x0,x1,x2=result.x
+                                     #   hoping all values of result.fun are zero.
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[29]:
+    :END:
+
+    root: [  5.00000000e-01   1.38102142e-13  -5.23598776e-01]
+    solution: [  0.00000000e+00  -2.23110419e-12   7.46069873e-14]
+
+*** Parameter estimation
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import numpy as np
+      import scipy.stats as stats
+      import matplotlib.pyplot as plt
+
+      # Create clean data.
+      x = np.linspace(0, 4.0, 100)
+      y = 1.5 * np.exp(-0.2 * x) + 0.3
+
+      # Add a bit of noise.
+      noise = 0.1 * stats.norm.rvs(size=100)
+      noisy_y = y + noise
+
+      # Fit noisy data with a linear model.
+      linear_coef = np.polyfit(x, noisy_y, 1)  #<- get coefs
+      linear_poly = np.poly1d(linear_coef)     #<- build the callable object 'linear_poly'
+      linear_y = linear_poly(x)                #<- compute y values by given x
+
+      # Fit noisy data with a quadratic model.
+      quad_coef = np.polyfit(x, noisy_y, 2)
+      quad_poly = np.poly1d(quad_coef)
+      quad_y = quad_poly(x)
+
+      plt.plot(x, noisy_y, 'ro')
+      plt.plot(x, linear_y)
+      plt.plot(x, quad_y)
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[30]:
+    : [<matplotlib.lines.Line2D at 0x7f3cb34cc828>]
+    [[file:./obipy-resources/2199p3Z.png]]
+    :END:
+
+** Standard diagnostic tools :EXERCISE:
+*** Eyeball the plotted solution against the objective
+*** Run several times and take the best result
+*** Analyze a log of intermediate results, per iteration
+*** Rare: look at the covariance matrix
+*** Issue: how can you really be sure you have the results you were looking for? :EXERCISE:
+    EXERCISE: Use any of the solvers we've seen thus far to find the minimum of the
+    zimmermann function (i.e. use mystic.models.zimmermann as the objective). Use
+    the bounds suggested below, if your choice of solver allows it.
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import mystic.models as models
+      print(models.zimmermann.__doc__)
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[31]:
+    :END:
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+      import mystic.models
+      import mystic
+      result = opt.minimize(mystic.models.zimmermann, [10., 1.], method='powell')
+      print(result.x)
+      mystic.model_plotter(mystic.models.zimmermann, kwds='-f -b "-5:10:.1, -5:10:.1" -d -x 1')
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[42]:
+    [[file:./obipy-resources/2199EbV.png]]
+    :END:
+
+    evaluates a Zimmermann function for a list of coeffs
+
+    f(x) = max(f_0(x), p_i(x)), with i = 0,1,2,3
+
+    Where:
+    f_0(x) = 9 - x_0 - x_1
+    with for x_0 < 0:
+    p_0(x) = -100 * x_0
+    and for x_1 < 0:
+    p_1(x) = -100 * x_1
+    and for c_2(x) > 16 and c_3(x) > 14:
+    p_i(x) = 100 * c_i(x), with i = 2,3
+    c_2(x) = (x_0 - 3)^2 + (x_1 - 2)^2
+    c_3(x) = x_0 * x_1
+    Otherwise, p_i(x)=0 for i=0,1,2,3 and c_i(x)=0 for i=2,3.
+
+    Inspect with mystic_model_plotter using::
+    mystic.models.zimmermann -b "-5:10:.1, -5:10:.1" -d -x 1
+
+    The minimum is f(x)=0.0 at x=(7.0,2.0)
+
+    EXERCISE: Do the same for the fosc3d function found at mystic.models.fosc3d,
+    using the bounds suggested by the documentation, if your chosen solver accepts
+    bounds or constraints.
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import mystic.models as models
+      print (models.fosc3d.__doc__)
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[44]:
+    :END:
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+      import mystic.models
+      import mystic
+      result = opt.minimize(mystic.models.fosc3d, [-5., 0.5], method='powell')
+      print(result.x)
+
+      mystic.model_plotter(mystic.models.fosc3d, kwds='-b "-5:5:.1, 0:5:.1" -d')
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[46]:
+    [[file:./obipy-resources/2199evh.png]]
+    :END:
+
+    More to ponder: what about high-dimenstional and nonlinear constraints?
+
+    Let's look at optimization "redesigned" in mystic...
+
+* Misc tools
+** Numpy
+   多项式函数是变量的整数次冥与系数的乘积之和，可以用下面的公式表示：
+
+   由于多项式函数只包含加法和乘法运算，因此计算容易，并且可以用于计算其他数学函
+   数的近似值。在Numpy中，多项式函数的系数可以用一维数组表示，如f(x) =x^3-2x+1，
+   则可以表示为数组：
+
+   #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+   a = np.array([1.0,0,-2,1])
+   p = np.poly1d(a)
+   type(p)
+   #+END_SRC
+   其中a[0]是最高次项，a[-1]是常数项。
+
+   系数可以通过 ~poly1d( )~ 函数转换为多项式对象，此对象可以像函数一样调用，它返
+   回多项式函数的值，如：
+
+   #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+   p(np.linspace(0,1,5))
+   #+END_SRC
+
+   对poly1d( )对象进行加减乘除运算，相当于对应多项式函数进行计算，如：
+
+   #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+   p+[-2,1] #和p+np.poly1d([-2,1])相同，-2x+1
+   poly1d([ 1.,  0., -4.,  2.])
+   p*p #两个3次多项式相乘，得到一个6次多项式
+   p/[1,1] #返回2个多项式除法的结果，分别为商式和余式
+   #+END_SRC
+   上面的商式为：x^2-x-1，余式为2。
+
+   多项式对象的deriv( )和integ( )方法分别用于计算多项式函数的微分和积分，如：
+
+   #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+   p.deriv()
+   p.integ()
+   #+END_SRC
+
+   多项式函数的根可以用roots( )计算：
+
+   #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+   r = np.roots(p)
+   r
+   #+END_SRC
+
+   而poly（）函数可以将根转换为多项式的系数，如：
+
+   #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+   np.poly(r)
+   #+END_SRC
+
+   除了使用多项式对象外，还可以直接使用Numpy提供的多项式函数对多项式系数的数组进
+   行运算，主要函数包括：np.poly, np.polyadd, np.polydiv, np.polyint,
+   np.polysub, np.poly1d, np.polyder, np.polyfit, np.polymul, np.polyval等。
+** Scipy
+*** scipy.optimize
+    https://docs.scipy.org/doc/scipy/reference/optimize.html
+
+    This package used for optimization and root finding Note that,
+    ~obj_function~ is an object build by method ~np.poly1d~
+
+**** Optimization
+***** minimize
+      | key args(name: tyep)                                     | return                                       |
+      |----------------------------------------------------------+----------------------------------------------|
+      | fun:  callable, obj_function(x, *args)                   | res: OptimizeResult(object)                  |
+      | args: tuple, the args passed to 'fun'                    | - res.x : solution array                     |
+      | x0: ndarray, shape(n,) initial guess                     | - res.success : boolean flag say find or not |
+      | method: str or callable, optimizer apply on obj_function | - res.message : the cause of termination     |
+      | jac:  callable, derivative function of 'fun'             | - res.nfev : number of function evaluations  |
+      | constraints: tuple of dicts, constraints functions       | - res.njev : number of jacobian evaluations  |
+      |                                                          | - res.nhev : number of hessian evaluations   |
+      |                                                          |                                              |
+
+      Note that, if you want to define a custom function instead of using
+      something like ~numpy.poly1d~, you should follow the fixed format of
+      ~fun~, whichi is
+
+      ~fun(x, *args) -> float~
+
+      where ~x~ is an 1-D array with shape (n,), *each element of ndarray
+      represent a variable* and ~args~ is a tuple of the fixed parameters needed
+      to *completely specify the function*.
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # http://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html#tutorial-sqlsp
+      '''
+        Maximize: f(x) = 2*x0*x1 + 2*x0 - x0**2 - 2*x1**2
+
+        Subject to:    x0**3 - x1 == 0
+                               x1 >= 1
+      '''
+      import numpy as np
+
+      def objective(x, sign=1.0):
+          return sign*(2*x[0]*x[1] + 2*x[0] - x[0]**2 - 2*x[1]**2)
+
+      def derivative(x, sign=1.0):
+          dfdx0 = sign*(-2*x[0] + 2*x[1] + 2)
+          dfdx1 = sign*(2*x[0] - 4*x[1])
+          return np.array([ dfdx0, dfdx1 ])
+
+      # unconstrained
+      result1 = opt.minimize(objective,    # <- obj_function
+                            [-1.0,1.0],   # <- initial guess
+                            args=(-1.0,), # <- the args passed to obj_function
+                            jac=derivative, # <- derivative function of obj_function
+                            method='SLSQP', # <- linear & quadratic programming
+                            options={'disp': True}) # <- print out the message
+
+      print("unconstrained: {}".format(result1.x))
+
+
+      cons = ({'type': 'eq', # <- constraints_func type
+               'fun' : lambda x: np.array([x[0]**3 - x[1]]),
+               'jac' : lambda x: np.array([3.0*(x[0]**2.0), -1.0])},
+              {'type': 'ineq',
+               'fun' : lambda x: np.array([x[1] - 1]),
+               'jac' : lambda x: np.array([0.0, 1.0])})
+
+      # constrained
+      result2 = opt.minimize(objective,
+                            [-1.0,1.0],
+                            args=(-1.0,),
+                            jac=derivative,
+                            constraints=cons, #<- constraints dict
+                            method='SLSQP',
+                            options={'disp': True})
+
+      print("constrained: {}".format(result2.x))
+    #+END_SRC
+
+****** local optimization
+       - minimize(fun, x0[, args, method, jac, hess, ...])
+       - minimize_scalar(fun[,bracket, bounds, ...])
+       - OptimizeResult
+       - OptimizeWarning
+******* minimize()
+******** the ~method~ s support by ~minimize()~
+         minimize(method=’Nelder-Mead’)
+         minimize(method=’Powell’)
+         minimize(method=’CG’)
+         minimize(method=’BFGS’)
+         minimize(method=’Newton-CG’)
+         minimize(method=’L-BFGS-B’)
+         minimize(method=’TNC’)
+         minimize(method=’COBYLA’)
+         minimize(method=’SLSQP’)
+         minimize(method=’trust-constr’)
+         minimize(method=’dogleg’)
+         minimize(method=’trust-ncg’)
+         minimize(method=’trust-krylov’)
+         minimize(method=’trust-exact’)
+******** ~constraints~ passed to minimize
+         - NonlinearConstraint
+         - LinearConstraint
+         - Bounds
+******** ~HessianUpdateStrategy~ passed to minimize
+         - BFGS
+         - SR1
+******* minimize_scalar(fun[,bracket, bounds, ...])
+        minimize_scalar(method=’brent’)
+        minimize_scalar(method=’bounded’)
+        minimize_scalar(method=’golden’)
+****** Equation (local) minimizer
+****** Global optimization
+***** minimize_scalar
+      | key args(name: tyep)         | return                                       |
+      |------------------------------+----------------------------------------------|
+      | fun:  callable               | res: OptimizeResult(object)                  |
+      | method: Brent,Bounded,Golden | - res.x : solution array                     |
+      | bounds: sequence,tuple       | - res.success : boolean flag say find or not |
+      | jac: derivative function     | - res.message : the cause of termination     |
+      |                              | - res.nfev : number of function evaluations  |
+      |                              | - res.njev : number of jacobian evaluations  |
+      |                              | - res.nhev : number of hessian evaluations   |
+      |                              |                                              |
+
+      Note that, the return type of ~scipy.optimize.minimize_scalar()~ is
+      ~OptimizeResult~ type, which has 3 attributes:
+      1. x
+      2. success
+      3. message
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.special as ss
+      import scipy.optimize as opt
+      import numpy as np
+      import matplotlib.pyplot as plt
+
+      x = np.linspace(2, 7, 200)
+
+      # 1st order Bessel
+      j1x = ss.j1(x)
+      plt.plot(x, j1x)
+
+      # use scipy.optimize's more modern "results object" interface
+      result = opt.minimize_scalar(ss.j1, method="bounded", bounds=[2, 4])
+
+      j1_min = ss.j1(result.x)
+      plt.plot(result.x, j1_min,'ro')
+      plt.axvline(x=2, ls='--', color='r')
+      plt.axvline(x=4, ls='--', color='r')
+    #+END_SRC
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      # eg from official site
+      import scipy.special as ss
+      import scipy.optimize as opt
+      import numpy as np
+      import matplotlib.pyplot as plt
+      fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+
+      x = np.linspace(-10, 7, 1000)
+      def f(x):
+          return (x-2)*x*(x+2)**2
+
+      # get minimize without bound constraints
+      res = opt.minimize_scalar(f)
+      print (res.x)
+      axes[0].plot(x, f(x))
+      axes[0].plot(res.x, f(res.x), 'ro')
+
+      # get minimize with bound constraints
+      res2 = opt.minimize_scalar(f, method='bounded', bounds=(-3, -1))
+      print (res2.x)
+      axes[1].plot(x, f(x))
+      axes[1].plot(res2.x, f(res2.x), 'ro')
+      axes[1].axvline(x=-3, linestyle='--', color='r')
+      axes[1].axvline(x=-1, linestyle='--', color='r')
+      plt.show()
+    #+END_SRC
+
+****** Rosenbrock function
+***** fmin
+      using the *downhill* simplex algorithm
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+import numpy as np
+objective = np.poly1d([1.3, 4.0, 0.6])
+print(objective)
+print(type(objective))
+import scipy.optimize as opt
+x_ = opt.fmin(objective, [3])
+print("solved: x={}".format(x_))
+    #+END_SRC
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+  %matplotlib inline
+  import matplotlib.pyplot as plt
+  x = np.linspace(-4,1,101)
+  # mpl.plot(x, objective(x))
+  # mpl.plot(x_, objective(x_), 'ro')
+  plt.plot(x, objective(x))
+  plt.plot(x_, objective(x_), 'ro') # <- act like 'downhill'
+  plt.show()
+#+END_SRC
+**** Fitting
+    Note that, data fitting methods *return an array* inside which are the
+    coefficients of the unspecified function model
+
+    - *coefficients of unspecified function* = ~opt~.curve_fit(assumfun, x, y, iniguess)
+    - *coefficients of unspecified function* = ~np~.polyfit(x, y, order_num)
+      - order_num is the 次方 of polynormial function model you want to use to
+        fit data points
+***** curve_fit(f, xdata, ydata[, p0, sigma,...])
+      what is curve fitting
+      1. you give an assuming *coefficients-unspecified* function: like ax+b=y
+      2. give an initial guess of these coefficients
+      3. compute the best coefficients
+         1. using some optimization method like least square to minimize the sum
+            distance between all data points and the initial curve
+***** other fitting fun
+    - ~opt~.curve_fit(assumfun, x, y, iniguess)
+    - ~np~.polyfit(x, y, order_num)
+      - order_num is the 次方 of polynormial function model you want to use to
+        fit data points
+***** data fitting + np.poly1d()
+      It's a good idea to combine data fitting methods and methods like np.poly1d()
+      This methods combination always use to check points fitting result good or not.
+
+      linear_coef = np.polyfit(x, noisy_y, 1) #<- get the coefs as an array
+      linear_poly = np.poly1d(linear_coef)    #<- build an function obj by coefs array
+**** Root Finding
+***** Scalar functions
+***** Multidimensional
+***** scipy.optimize.root(equations, x0, args)
+      result = opt.root(system, x0, args=(a, b, c))
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import numpy as np
+      import scipy.optimize as opt
+
+      def system(x,a,b,c):
+          x0, x1, x2 = x
+          eqs= [
+              3 * x0 - np.cos(x1*x2) + a, # == 0
+              x0**2 - 81*(x1+0.1)**2 + np.sin(x2) + b, # == 0
+              np.exp(-x0*x1) + 20*x2 + c # == 0
+          ]
+          return eqs
+
+
+      # coefficients
+      a = -0.5
+      b = 1.06
+      c = (10 * np.pi - 3.0) / 3
+
+      # initial guess
+      x0 = [0.1, 0.1, -0.1]
+
+      # Solve the system of non-linear equations.
+      result = opt.root(system, x0, args=(a, b, c))
+      print("root:", result.x)
+      print("solution:", result.fun)
+    #+END_SRC
+
+**** Linear programming
+**** Utilities
+**** Global optimization
+~basinhopping(func, x0[, niter, T, stepsize, …])~	Find the global minimum of a function using the basin-hopping algorithm
+~brute(func, ranges[, args, Ns, full_output, …])~	Minimize a function over a given range by brute force.
+~differential_evolution(func, bounds[, args, …])~	Finds the global minimum of a multivariate function.
+**** scipy.optimize.fmin(obj_function)
+Minimize a function using the downhill simplex algorithm.
+This algorithm only uses function values, not derivatives or second derivatives.
+
+#+BEGIN_QUOTE
+.
+.                                                        +---- ONLY coefficients here: $1x^2 + 2x^1 + 3x^0$
+.                                                        |
+.                 obj_function object                    v
+.                                   +------- ~np.ploy1d([1,2,3])~
+.                                   |
+.                                   v
+.         ~scipy.optimize.fmim(fun= _ , x0=...)~ ====> ndarray
+.                               ^        ^
+.                               |        |
+.                anything callable      initial guess
+.              can be passed to it
+#+END_QUOTE
+
+#+BEGIN_QUOTE
+.
+.                 obj_function object
+.                                   +------- ~def f(x): return x**2~
+.                                   |
+.                                   v
+.         ~scipy.optimize.fmim(fun= _ , x0=...)~ ====> ndarray
+.                               ^        ^
+.                               |        |
+.                anything callable      initial guess
+.              can be passed to it
+.
+#+END_QUOTE
+
+
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import numpy as np
+      import scipy.optimize as opt
+
+      objective = np.poly1d([1.3, 4.0, 0.6]) # <- get obj_function object
+      print(objective)
+      x_ = opt.fmin(objective, [3])          # <- find the x who can minimize this obj_function
+      print("solved: x={}".format(x_))
+      print ( type(x_) )
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[21]:
+    :END:
+** Matplotlib
+*** axhline() and axvline()
+draw a vertical line or horizontal line:
+#+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+  import matplotlib.pyplot as plt
+  import numpy as np
+  x = np.linspace(-1,5,100)
+  fig, ax = plt.subplots()
+  ax.plot(x,x*x)
+  ax.axhline(y=5, ls='--', color='r')
+  ax.axvline(x=1, ls='-.', color='b')
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[22]:
+[[file:./obipy-resources/3915C-d.png]]
+:END:
+** Linear Algebra
+*** Jacobian
+    https://www.youtube.com/watch?v=Bw5yEqwMjQU
+
+Jacobian is essentially a determinant, but what's the transformation.
+The jacobian of the transformation T given by ~x=g(u,v)~ , and ~y=h(u,v)~ is:
+#+BEGIN_QUOTE
+.
+.              |∂x   ∂x|
+.    ∂(x,y)    |-- , --|
+.   -------- = |∂u   ∂v|
+.    ∂(u,v)    |       |
+.              |∂y   ∂y|
+.              |-- , --|
+.              |∂u   ∂v|
+.
+#+END_QUOTE
+
+So jacobian is the determinant of the transformation above.
+   .  ∂u ∂v   ∂v ∂u
+   .  --.-- - --.--
+   .  ∂x ∂y   ∂x ∂y
+**** background of jacobian
+1. [[*what is *linear transformation*][what is *linear transformation*]]
+2. [[*what is *matrices is transformation of space*][what is *matrices is transformation of space*]]
+3. [[*what is *determinant of a transformation*][what is *determinant of a transformation*]]
+*** what is *linear transformation*
+    https://www.youtube.com/watch?v=VmfTXVG9S0U
+
+    #+BEGIN_QUOTE
+    .  |-    -|  |- -|    |-           -|
+    .  | 2 -3 |  | x | =  | 2x + (-3)y  |
+    .  | 1  1 |  | y |    |  x +     y  |
+    .  |-    -|  |- -|    |-           -|
+    .
+
+    linear transformation is change the axes of ~(x,y)~ to new axes of (2x+(-3)y,
+    x+y) for more detaile:
+
+    |------------+----------|
+    | original x | new x    |
+    | x          | 2x+(-3y) |
+    |------------+----------|
+    | original y | new y    |
+    | y          | x+y      |
+
+    .
+    .            new j  old j
+    .           ......
+    .       |-  .  -|.  |- -|    |-  -|
+    .       | 2 .-3 |.  | 0 | =  | -3 |
+    .       | 1 . 1 |.  | 1 |    |  1 |
+    .       |-  .  -|.  |- -|    |-  -|
+    .           ......
+    .
+    .
+    .       new i      old i
+    .      ......
+    .      .|-  .  -|  |- -|    |-  -|
+    .      .| 2 .-3 |  | 1 | =  |  2 |
+    .      .| 1 . 1 |  | 0 |    |  1 |
+    .      .|-  .  -|  |- -|    |-  -|
+    .      ......
+    .
+
+    The same time this linear transformation build a new pair of basis vector
+
+    |------------------------+--------|
+    | original base vector i | new i  |
+    | (1,0)                  | (2,1)  |
+    |------------------------+--------|
+    | original base vector j | new j  |
+    | (0,1)                  | (-3,1) |
+    #+END_QUOTE
+*** what is *matrices is transformation of space*
+
+    https://www.youtube.com/watch?v=VmfTXVG9S0U
+
+    #+BEGIN_QUOTE
+    . Transformation on a vector with original basis vector is
+    . same with using same coefficients(x,y) applying to the transformed basis vectors
+    .
+    . $L(v_{origBasis}) = v_{L(origBasis)} = v_{newBasis}$
+    .
+    . 'L' here is linear transformation means.
+    . see video, it's very easy to understand.
+    #+END_QUOTE
+*** what is *determinant of a transformation*
+https://www.youtube.com/watch?v=Ip3X9LOh2dk
+
+*Determinant of a transformation* if the *area ratio* of unit(basis vectors)
+rectangle of post-transformation and that of pre-transformation
+
+Note that, if the transformation squishes all of space onto a line, the area of
+a line is zero. So the area ratio is zero, and the *determinant* is zero.
+
+like a matrices with all elements are zero, this transformation will make space
+squish to a point( any-D -> 1-D ), it's a *dimension reduction*
+
+for the transformation whose determinant is negative, is just make the axes
+reversed: x -> + ==> x-> - or y -> + ===> y -> - . This will make determinant
+negative.Negative determinant relate to orientation-flipping.
+
+
+for 3-D, area ratio --> volume ratio
+
+3-D squish to a 2-D, determinant = 0 ===> column of the matrix is linear
+dependent. Because its 3 basis vectors are lie on the same plane, so they can
+convert to each other by linear combination.
+
+the negative determinant of 3-D, can use right-hand theorem and left-hand
+theorem to understand.
+
+but how to compute this 'determinant'.
+area of big rectangle - area of other little shapes
+
+
+from the view point of area ratio, you can easily get the product-rule of determinant:
+
+det(M1M2) = det(M1)*det(M2)
+** Multivariable calculus
+*** gradient
+    The gradient is a way of packing together all the partial derivative information of a function.
+** Optimization
+*** least square method
+https://www.youtube.com/watch?v=YwZYSTQs-Hk
+
+This MIT tutorial give a new vision of a better interpretation of least square,
+especially on term "square".
+
+"you're trying to find the line that minimize the area of the sum of area of
+these three squares".
+
+and you can change two things about this line:
+- solpe
+- y-intercept
+
+
+https://www.youtube.com/watch?v=coQAAN4eY5s
+
+This video gives a good interpretation about "residual"
+
+Residual = Observed - Predicted
+
+https://www.youtube.com/watch?v=3hz6Tb1i2FY
+
+This video gives a full and best interpretation of what's least square.
+*** linear programming
+    https://www.youtube.com/watch?v=-32jcGMpD2Q
+
+    First, the obj_function is linear, like $y = x_1 + 3x_2$
+
+The purpose of LP is to optimize some obj_function to find a minimization or
+maximization, given a set of constraints on the values of x and y. These
+constraints are usually provided as a system of inequalities.
+
+
+
+.
+.
+.                 |      ..
+.              (1)|       .. (2)
+.         ........*.........*..........
+.                 |...........
+.                 |............
+.                 |.............
+.              (3)|..^........... (4)
+. ----------------*--.-----------*---------------
+.                 |  .           ..
+.                 |  .            ..
+.                 |  .             ..
+.                    .              ..
+.                 ~feasible region~
+.  the system of inequalities constraints form a solution space,
+.  usually a closed region, called ~feasible region~
+.
+.
+
+It's impossible to traverse every point of feasible region to compare them all
+to get min or max. The concept of LP says that min or max of the obj_function
+will occur at vertices or corners. So you only need to check these points to
+see whos is max or min --- in this case, (1)(2)(3)(4) points.
+
+*** quadratic programming
+    https://www.youtube.com/watch?v=-32jcGMpD2Q
+
+    First, the obj_function is quadratic, like $y= x_1^2 + 3x_2^2$
+*** differential evolution
+    https://www.youtube.com/watch?v=BCp_kfuPWvs
+    https://www.youtube.com/watch?v=L--IxUH4fac
+
+    like *anneal* 退火算法
+    a method to optimize a problem by iteratively trying to improving a
+    candidate solution with regard to a given measure of quality.
+
+    such methods are commonly known as metaheuristic since they make few or no
+    assumptions about the problem being optimized and concerts very large spaces
+    of candidate solutions.
+
+    this kind of method don't guarantee an optimal solution will be found.
+
+    this kind of methods don't use the gradient of the problem being optimized,
+    which means don't require for the problem to be differentiable/continuous,
+    even can used on the problem changed with time.This is different from the
+    traditional optimization algorithms like gradient descent and newton
+    methods.
+
+    differential_evolution optimize a problem by maintaining a population of
+    candidate solutions and creating new candidate solutions by combining
+    existing ones according to its simple formula and then keeping whichever
+    candidate has the best score.
+
+    differential_evolution can work with parallel computing to speed up, and
+    used on motion optimization problem.
+**** scipy.optimize.differential_evolution()
+     all global optimizer in scipy, are ONLY have two parameters:
+     1. obj_fun
+     2. bounds
+
+     global use ~bounds~; local use ~initial guess~.
+
+    #+NAME: rosen functin minimize using global optimization
+    #+BEGIN_SRC ipython :session :exports both :async t :results raw drawer
+      import scipy.optimize as opt
+
+      # bounds instead of an initial guess (5 dimension)
+      bounds = [(-10., 10)]*5
+
+      for i in range(10):
+          result = opt.differential_evolution(opt.rosen, bounds)
+          # result and number of function evaluations
+          print(result.x, '@ {} evals'.format(result.nfev))
+    #+END_SRC
+
+*** genetic algorithm
+** Statistics
+*** covariance
+    https://www.youtube.com/watch?v=xGbpuFNR1ME
+    bivariate scatter plot
+
+    Join two data sets on ONE attribute, like join
+    1. [month, S&P500 stock]
+    2. [month, Dow Johns stock]
+
+    Then, plot the [S&P500 stock, Dow Johns stock] on a 2D axes figure.The most
+    important thing is to see *what shape these plots form*, by this ~shape~ you
+    can say they're positive/negative related:
+    1. a positive slope line: one go up, another go up
+    1. a negative slope line: one go up, another go down.
+
+    They claim to *measure(basically) the same thing*.
+
+    How they change together.
+
+    Covariance is one of a family of statistical measures used to analyze the
+    *linear relationship* between *two* variables.
+
+    Core question: how to two variables behave as a PAIR.
+
+    *Covariance* *Correlation* *Linear regression*, these 3 are all very closely
+    related.All these tools are analyzing or looking at the *linear relationship*
+    between *two* variables.
+
+    *Covariance* ONLY focus on the *direction(sign+/-) of relationship* of two
+    *variables, NOT* the *strength* of relationship. *Correlation* talks about
+    *the *strength* of the relationship.
+
+    covariance -> direction
+    correlation -> strength
+
+    Sample Covariance:  $s_{xy} = \frac{\sum{(x_i - \bar{x})(y_i - \bar{y})}}{n-1}$
+
+    Sample Variance: $s_x^2 = \frac{\sum{(x_i - \bar{x})(x_i - \bar{x})}}{n-1}$
+
+    Population Covariance:  $\sigma_{xy} = \frac{\sum{(x_i - \mu_x)(y_i - \mu_y)}}{N}$
+
+    Population Variance:  $\sigma_{x}^2 = \frac{\sum{(x_i - \mu_x)(x_i - \mu_x)}}{N}$
+
+    ~cov = 0~ ===> no linear relationship between two variables.
+
+*** covariance matrix
+    matrix of scatter plots:
+    ------------------------
+
+    A figure that plots each variable against every other variable.
+
+    On the diagonal is what we have some statiscs for each variable itself,
+    diagonal are all histogram, each represent the distribution of this
+    variable.
+
+    covariance matrix:
+    ------------------
+
+    The diagonal of a covariance matrix provides the Var(x) of each individual
+    variable; covariance with itself.
+
+
+    |    | x1      | x2         | x3         | x4         |
+    |----+---------+------------+------------+------------|
+    | x1 | Var(x1) | Cov(x1,x2) | Cov(x1,x3) | Cov(x1,x4) |
+    | x2 |         | Var(x2)    | Cov(x2,x3) | Cov(x2,x4) |
+    | x3 |         |            | Var(x3)    | Cov(x3,x4) |
+    | x4 |         |            |            | Var(x4)    |
+
+    from this table you can compute ( std(xi), std(xj), cov(xi,xj), r) these 4
+    items very conveniently.
+
+
+
+
+
+
+
+*** correlation
+    covariance has no upper or lower bound; correlation always in [-1, +1]
+
+    covariance, because of its fomular, its value is *dependent* on the value of the variables.
+    correlation is *independent* on the value of the variables.
+
+    covariance is not standardized; correlation is standardized( like z-score )
+
+    You should follow advices below:
+    1. before computing correlation, see the plot, please.
+       1. if your plot is curve or u-shape, don't need compute correlation.
+    2. correlation is *ONLY* for *LINEAR* relationships.
+    3. correlation is *NOT* causation(因果关系)
+       1. two completely unrelated factors that may have a *mathematical
+          correlation* but have NO *sensible correlation* in real-life.
+
+
+    r is called (Pearson) correlation coefficient.
+
+    $r = \frac{cov(x,y)}{std(x) \times std(y)} = \frac{cov(x,y)}{S_xS_y}$
+
+    (std(x), std(y), cov(x,y), r) if you know any 3, you get the 4th
+
+    Rule of Thumb: more objectively state whether or not a relationship exists.
+
+    if $|r| \geq \frac{2}{\sqrt{n}}$, then a relationship exist.
